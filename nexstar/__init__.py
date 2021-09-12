@@ -190,14 +190,17 @@ class NexstarHandController:
         # Initiate a "GoTo" command.
 
         if highPrecisionFlag:
-            command = NexstarCommand.GOTO_POSITION_AZM_ALT_PRECISE if (coordinateMode == NexstarCoordinateMode.AZM_ALT) else NexstarCommand.GOTO_POSITION_RA_DEC_PRECISE
+            #command = NexstarCommand.GOTO_POSITION_AZM_ALT_PRECISE if (coordinateMode == NexstarCoordinateMode.AZM_ALT) else NexstarCommand.GOTO_POSITION_RA_DEC_PRECISE
+            command = NexstarCommand.GOTO_POSITION_RA_DEC_PRECISE
             firstCoordinate  = round(float(firstCoordinate)  / 360.0 * 0x100000000)
             secondCoordinate = round(float(secondCoordinate) / 360.0 * 0x100000000)
             coordinates = "{:08x},{:08x}".format(firstCoordinate, secondCoordinate)
         else:
-            command = NexstarCommand.GOTO_POSITION_AZM_ALT if (coordinateMode == NexstarCoordinateMode.AZM_ALT) else NexstarCommand.GOTO_POSITION_RA_DEC
+            #command = NexstarCommand.GOTO_POSITION_AZM_ALT if (coordinateMode == NexstarCoordinateMode.AZM_ALT) else NexstarCommand.GOTO_POSITION_RA_DEC
+            command = NexstarCommand.GOTO_POSITION_RA_DEC
             firstCoordinate  = round(float(firstCoordinate)  / 360.0 * 0x10000)
             secondCoordinate = round(float(secondCoordinate) / 360.0 * 0x10000)
+            print(firstCoordinate, secondCoordinate)
             coordinates = "{:04x},{:04x}".format(firstCoordinate, secondCoordinate)
 
         self._write(command, coordinates)
@@ -359,7 +362,7 @@ class NexstarHandController:
 
         return (timestamp, dst)
 
-    def setTime(self, timestamp, dst):
+    def setTime(self, timestamp, tzone, dst):
 
         hour   = timestamp.hour
         minute = timestamp.minute
@@ -368,7 +371,8 @@ class NexstarHandController:
         day    = timestamp.day
         year   = timestamp.year - 2000
 
-        zone = round(timestamp.utcoffset() / datetime.timedelta(hours = 1))
+        #zone = round(timestamp.utcoffset() / datetime.timedelta(hours = 1))
+        zone = tzone
         if zone < 0:
             zone += 256
 
@@ -638,7 +642,7 @@ def main():
     if False:
 
         timestamp = datetime.datetime.now(tz)
-        controller.setTime(timestamp, 0)
+        controller.setTime(timestamp,0,0)
 
         #(timestamp, dst) = controller.getTime()
         #timestamp = timestamp.astimezone(tz)
