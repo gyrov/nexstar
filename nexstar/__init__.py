@@ -163,6 +163,26 @@ class NexstarHandController:
         return response
 
     # Public API starts here
+    def mcGetPosition(self, motor: NexstarDeviceId = NexstarDeviceId.AZM_RA_MOTOR):
+        # write a request to get motor signed fraction of a full rotation
+        request = [0x50, 0x01, motor, 0x01, 0x00, 0x00, 0x00, 0x03]
+        #request = [0x50, 0x01 ,0x11, 0xfe, 0x00, 0x00, 0x00, 0x02]
+        # write to the serial port
+        self._write(request)
+        #response = self._read_ascii(expected_response_length=3+1, check_and_remove_trailing_hash=True)
+        response = self._read_binary(expected_response_length=3+1, check_and_remove_trailing_hash=True)
+        motor_rotation =  int.from_bytes(response, 'big', signed=True) * (360/2**24)
+        if motor_rotation <= 0:
+            motor_rotation += 360
+        return motor_rotation
+
+    def getPierSide(self):
+        rotation = self.mcGetPosition(NexstarDeviceId.AZM_RA_MOTOR)
+        if 90 <= rotation <= 270:
+            pierside = 'W'
+        else:
+            pierside = 'E'
+        return pierside
 
     def getPosition(self, coordinateMode = NexstarCoordinateMode.AZM_ALT, highPrecisionFlag = True):
 
