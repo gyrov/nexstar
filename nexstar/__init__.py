@@ -55,7 +55,7 @@ class NexstarCommand(Enum):
     PASSTHROUGH                   = 'P' # 1.6+ this includes slewing commands, 'get device version' commands, GPS commands, and RTC commands
 
 class NexstarPassthroughCommand(Enum):
-    FOCUSER_GET_POSITION              =   1  # Focuser passthrough commands are nexstar auxbus commands
+    MC_GET_POSITION                   =   1  # Focuser passthrough commands are nexstar auxbus commands
     FOCUSER_GOTO_POSITION             =   2
     MOTOR_SLEW_POSITIVE_VARIABLE_RATE =   6
     MOTOR_SLEW_NEGATIVE_VARIABLE_RATE =   7
@@ -79,7 +79,7 @@ class NexstarDeviceId(Enum):
     ALT_DEC_MOTOR = 17
     FOCUS_MOTOR   = 18
     GPS_DEVICE    = 176
-    RTC_DEVICE    = 178 # real-time clock on the CGE mount
+    RTC_DEVICE    = 178 # real-time clock on the CGE mount    
 
 class NexstarHandController:
 
@@ -176,7 +176,27 @@ class NexstarHandController:
             motor_rotation += 360
         return motor_rotation
 
-    def getPierSide(self):
+    def getMotorPosition(self, motor: NexstarDeviceId = NexstarDeviceId.AZM_RA_MOTOR) -> float:
+        """Get the motor position in degrees measured from the home position.
+
+        Args:
+            motor (NexstarDeviceId, optional): The motor to get the position of. Defaults to NexstarDeviceId.AZM_RA_MOTOR.
+
+        Returns:
+            float: The motor position in degrees.
+        """
+        response = self.passthrough(motor, NexstarPassthroughCommand.MC_GET_POSITION, expected_response_bytes=3)
+        motor_rotation =  int.from_bytes(response, 'big', signed=True) * (360/2**24)
+        if motor_rotation <= 0:
+            motor_rotation += 360
+        return motor_rotation
+        
+    def getPierSide(self) -> str:
+        """Get pier side of the mount.
+
+        Returns:
+            str: W or E depending on which side the OTA is on.
+        """
         rotation = self.mcGetPosition(NexstarDeviceId.AZM_RA_MOTOR)
         if 90 <= rotation <= 270:
             pierside = 'W'
@@ -535,7 +555,7 @@ class NexstarHandController:
     # Celestron focuser positions are in steps.
     # The values returned here will match the values shown on the hand controller under the focuser menu.
     def focuserGetPosition(self):
-        position = self.passthrough(NexstarDeviceId.FOCUS_MOTOR, command = NexstarPassthroughCommand.FOCUSER_GET_POSITION, expected_response_bytes = 3)
+        position = self.passthrough(NexstarDeviceId.FOCUS_MOTOR, command = NexstarPassthroughCommand.MC_GET_POSITION, expected_response_bytes = 3)
         return int.from_bytes(position, "big", signed=False)
 
     def focuserGotoPosition(self, position):
@@ -545,6 +565,18 @@ class NexstarHandController:
     def focuserGotoInProgress(self):
         return not self.passthrough(NexstarDeviceId.FOCUS_MOTOR, [NexstarPassthroughCommand.FOCUSER_MOVE_DONE], 1) == b'\xff'
 
+    def focuserConnected(self):
+        """Try to get the focuser version. If it fails, assume focuser not
+          connected.
+
+        Returns:
+            bool: True if focuser connected, False if not.
+        """
+        try:
+            self.getDeviceVersion(NexstarDeviceId.FOCUS_MOTOR)
+            return True
+        except (NexstarProtocolError, NexstarPassthroughError):
+            return False
 
 def status_report(controller):
 
