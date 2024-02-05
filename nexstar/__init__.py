@@ -515,7 +515,7 @@ class NexstarHandController:
         return response
 
     def slew_fixed(self, deviceId, rate):
-        if deviceId not in [NexstarDeviceId.AZM_RA_MOTOR, NexstarDeviceId.ALT_DEC_MOTOR]:
+        if deviceId not in [NexstarDeviceId.AZM_RA_MOTOR, NexstarDeviceId.ALT_DEC_MOTOR, NexstarDeviceId.FOCUS_MOTOR]:
             raise NexstarUsageError("slew command only supported for motors.")
         if not (isinstance(rate, int) and -9 <= rate <= +9):
             raise NexstarUsageError("slew_fixed() failed: incorrect value for parameter 'rate': {}".format(repr(rate)))
@@ -555,7 +555,7 @@ class NexstarHandController:
     # Celestron focuser positions are in steps.
     # The values returned here will match the values shown on the hand controller under the focuser menu.
     def focuserGetPosition(self):
-        position = self.passthrough(NexstarDeviceId.FOCUS_MOTOR, command = NexstarPassthroughCommand.MC_GET_POSITION, expected_response_bytes = 3)
+        position = self.passthrough(NexstarDeviceId.FOCUS_MOTOR, [NexstarPassthroughCommand.MC_GET_POSITION], expected_response_bytes = 3)
         return int.from_bytes(position, "big", signed=False)
 
     def focuserGotoPosition(self, position):
@@ -564,6 +564,11 @@ class NexstarHandController:
 
     def focuserGotoInProgress(self):
         return not self.passthrough(NexstarDeviceId.FOCUS_MOTOR, [NexstarPassthroughCommand.FOCUSER_MOVE_DONE], 1) == b'\xff'
+    
+    def focuserStop(self):
+        """Convenience function to stop the focus motor.
+        """
+        self.slew_fixed(NexstarDeviceId.FOCUS_MOTOR, 0)
 
     def focuserConnected(self):
         """Try to get the focuser version. If it fails, assume focuser not
