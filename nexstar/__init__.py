@@ -53,6 +53,8 @@ class NexstarCommand(Enum):
     GET_GOTO_IN_PROGRESS          = 'L' # 1.2+
     CANCEL_GOTO                   = 'M' # 1.2+
     PASSTHROUGH                   = 'P' # 1.6+ this includes slewing commands, 'get device version' commands, GPS commands, and RTC commands
+    HIBERNATE                     = 'x'
+    WAKE_UP                       = 'y'
 
 class NexstarPassthroughCommand(Enum):
     MC_GET_POSITION                   =   1  # Focuser passthrough commands are nexstar auxbus commands
@@ -175,6 +177,14 @@ class NexstarHandController:
         if motor_rotation <= 0:
             motor_rotation += 360
         return motor_rotation
+    
+    def hibernate(self):
+        self._write(NexstarCommand.HIBERNATE)
+        response = self._read_binary(expected_response_length=0+1, check_and_remove_trailing_hash=True)
+    
+    def wake_up(self):
+        self._write(NexstarCommand.WAKE_UP)
+        response = self._read_binary(expected_response_length=0+1, check_and_remove_trailing_hash=True)
 
     def getMotorPosition(self, motor: NexstarDeviceId = NexstarDeviceId.AZM_RA_MOTOR) -> float:
         """Get the motor position in degrees measured from the home position.
